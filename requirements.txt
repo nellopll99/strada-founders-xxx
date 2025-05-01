@@ -3,5 +3,5 @@ pandas
 openpyxl
 requests
 dnspython
-validate_email_address
 beautifulsoup4
+python-whois

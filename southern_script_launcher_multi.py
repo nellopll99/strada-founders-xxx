@@ -19,13 +19,13 @@ tool = st.selectbox(
 )
 
 if tool == "📬 Contact Scraper":
-    st.page_link("southern_script_v2.py", label="➡ Go to Contact Scraper")
+    st.warning("Please select this page from the left sidebar.")
 
 elif tool == "🧠 AI PE Investor":
-    st.page_link("ai_pe_investor.py", label="➡ Go to AI PE Investor")
+    st.warning("Please select this page from the left sidebar.")
 
 elif tool == "📝 AI NoteTaker":
-    st.page_link("southern_script_notetaker_live.py", label="➡ Go to AI NoteTaker")
+    st.warning("Please select this page from the left sidebar.")
 
 st.markdown("---")
 st.caption("Built for Private Equity analysts, associates, and deal teams.")

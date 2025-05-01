@@ -1,0 +1,12 @@
+streamlit
+pandas
+openpyxl
+requests
+dnspython
+beautifulsoup4
+whisper
+python-dotenv
+openai
+pydub
+sounddevice
+soundfile

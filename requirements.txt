@@ -4,4 +4,9 @@ openpyxl
 requests
 dnspython
 beautifulsoup4
-python-whois
+whisper
+python-dotenv
+openai
+pydub
+sounddevice
+soundfile

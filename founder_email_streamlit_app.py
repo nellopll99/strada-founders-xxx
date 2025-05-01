@@ -8,11 +8,14 @@ import dns.resolver
 from validate_email_address import validate_email
 from io import BytesIO
 
-st.set_page_config(page_title="Hunter-like Email Finder", layout="centered")
-st.title("Hunter-style Email Finder")
-st.write("Carica un file .xlsx con le colonne 'Domain' e 'Full Name'. L'app genererà email possibili, le verificherà e restituirà il risultato.")
+st.set_page_config(page_title="Southern Script – Email Discovery Tool", layout="centered")
+st.title("Southern Script – Email Discovery Tool")
+st.write("Upload a .xlsx file with columns 'Domain' and 'Full Name'. The app will generate possible emails, verify them, and return the result.")
 
-uploaded_file = st.file_uploader("Carica il file Excel", type=["xlsx"])
+uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
+
+def clean_domain(raw_url):
+    return raw_url.replace("http://", "").replace("https://", "").replace("www.", "").strip().strip("/")
 
 def build_email_patterns(full_name, domain):
     full_name = full_name.strip().lower()
@@ -38,13 +41,16 @@ def verify_email_mx(email):
     except:
         return False
 
+def extract_valid_emails(text, domain):
+    raw_emails = re.findall(r"[A-Za-z0-9._%+-]+@" + re.escape(domain), text)
+    return [email for email in raw_emails if "http" not in email and email.count("@") == 1]
+
 def scrape_site_emails(domain):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        url = "http://" + domain if not domain.startswith("http") else domain
+        url = "http://" + domain
         res = requests.get(url, headers=headers, timeout=10)
-        emails = list(set(re.findall(r"[A-Za-z0-9._%+-]+@" + re.escape(domain.split('//')[-1]) + r"", res.text)))
-        return emails
+        return extract_valid_emails(res.text, domain)
     except:
         return []
 
@@ -52,9 +58,10 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file)
     results = []
 
-    st.write("⏳ Elaborazione in corso, attendi qualche secondo...")
+    st.write("⏳ Processing, please wait a moment...")
     for _, row in df.iterrows():
-        domain = row["Domain"].strip().lower()
+        raw_domain = str(row["Domain"]).strip()
+        domain = clean_domain(raw_domain)
         full_name = row["Full Name"].strip()
 
         possible_emails = build_email_patterns(full_name, domain)
@@ -72,7 +79,7 @@ if uploaded_file:
         })
 
     output_df = pd.DataFrame(results)
-    st.success("✅ Email generate e verificate.")
+    st.success("✅ Emails generated and verified.")
     st.dataframe(output_df)
 
     buffer = BytesIO()
@@ -80,8 +87,13 @@ if uploaded_file:
     buffer.seek(0)
 
     st.download_button(
-        label="📥 Scarica il file Excel con i risultati",
+        label="📥 Download the Excel results",
         data=buffer,
         file_name="hunter_like_emails.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+
+# Reset button
+if st.button("🔁 Restart"):
+    st.experimental_rerun()

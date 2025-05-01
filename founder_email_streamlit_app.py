@@ -116,9 +116,6 @@ if uploaded_file:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-if st.button("🔁 Restart"):
-    st.experimental_rerun()
-
 # Reset button
 if st.button("🔁 Restart"):
     st.experimental_rerun()

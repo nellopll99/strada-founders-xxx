@@ -5,12 +5,12 @@ import re
 import requests
 import socket
 import dns.resolver
-from validate_email_address import validate_email
 from io import BytesIO
+from bs4 import BeautifulSoup
 
 st.set_page_config(page_title="Southern Script – Email Discovery Tool", layout="centered")
 st.title("Southern Script – Email Discovery Tool")
-st.write("Upload a .xlsx file with columns 'Domain' and 'Full Name'. The app will generate possible emails, verify them, and return the result.")
+st.write("Upload a .xlsx file with columns 'Domain' and 'Full Name'. The app will generate email candidates, test them, and return the best match with a confidence score.")
 
 uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
 
@@ -41,16 +41,25 @@ def verify_email_mx(email):
     except:
         return False
 
-def extract_valid_emails(text, domain):
-    raw_emails = re.findall(r"[A-Za-z0-9._%+-]+@" + re.escape(domain), text)
-    return [email for email in raw_emails if "http" not in email and email.count("@") == 1]
+def search_google_like(name, email):
+    query = f'{name} "{email}"'
+    try:
+        ddg_url = f"https://html.duckduckgo.com/html/?q={requests.utils.quote(query)}"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(ddg_url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        results = soup.find_all("a", class_="result__a")
+        return len(results) > 0
+    except:
+        return False
 
 def scrape_site_emails(domain):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         url = "http://" + domain
         res = requests.get(url, headers=headers, timeout=10)
-        return extract_valid_emails(res.text, domain)
+        raw_emails = re.findall(r"[A-Za-z0-9._%+-]+@" + re.escape(domain), res.text)
+        return list(set([e for e in raw_emails if "http" not in e and e.count("@") == 1]))
     except:
         return []
 
@@ -58,28 +67,42 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file)
     results = []
 
-    st.write("⏳ Processing, please wait a moment...")
+    st.write("⏳ Processing... this may take some time.")
     for _, row in df.iterrows():
         raw_domain = str(row["Domain"]).strip()
         domain = clean_domain(raw_domain)
         full_name = row["Full Name"].strip()
 
         possible_emails = build_email_patterns(full_name, domain)
-        verified = [e for e in possible_emails if verify_email_mx(e)]
+        verified_mx = [e for e in possible_emails if verify_email_mx(e)]
         scraped_emails = scrape_site_emails(domain)
+
+        # Determine best match with confidence
+        final_email = ""
+        confidence = "Low"
+        for email in verified_mx:
+            if search_google_like(full_name, email):
+                final_email = email
+                confidence = "High"
+                break
+        if not final_email and verified_mx:
+            final_email = verified_mx[0]
+            confidence = "Medium"
+        elif not final_email and scraped_emails:
+            final_email = scraped_emails[0]
+            confidence = "Low"
 
         results.append({
             "Domain": domain,
             "Full Name": full_name,
-            "Email Pattern 1": possible_emails[0] if len(possible_emails) > 0 else "",
-            "Email Pattern 2": possible_emails[1] if len(possible_emails) > 1 else "",
-            "Email Pattern 3": possible_emails[2] if len(possible_emails) > 2 else "",
-            "Verified Email": verified[0] if verified else "",
-            "Scraped Emails": ", ".join(scraped_emails)
+            "Generated Emails": ", ".join(possible_emails),
+            "Scraped Emails": ", ".join(scraped_emails),
+            "Final Email": final_email,
+            "Confidence": confidence
         })
 
     output_df = pd.DataFrame(results)
-    st.success("✅ Emails generated and verified.")
+    st.success("✅ Emails processed and scored.")
     st.dataframe(output_df)
 
     buffer = BytesIO()
@@ -87,12 +110,14 @@ if uploaded_file:
     buffer.seek(0)
 
     st.download_button(
-        label="📥 Download the Excel results",
+        label="📥 Download Excel Results",
         data=buffer,
-        file_name="hunter_like_emails.xlsx",
+        file_name="southern_script_verified_emails.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+if st.button("🔁 Restart"):
+    st.experimental_rerun()
 
 # Reset button
 if st.button("🔁 Restart"):

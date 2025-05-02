@@ -1,9 +1,0 @@
-streamlit==1.33.0
-pandas
-openpyxl
-beautifulsoup4
-requests
-dnspython
-tldextract
-PyMuPDF
-pdfplumber
